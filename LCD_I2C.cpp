@@ -6,9 +6,7 @@
 #include "LCD_I2C.h"
 #include <inttypes.h>
 
-String LCD_I2C::_empty = String("                    ");
-
-#include <Arduino_DebugUtils.h>
+String LCD_I2C::_empty = String("                    "); // max col_size
 
 // overridden write to implement Print interface
 #if defined(ARDUINO) && ARDUINO >= 100
@@ -17,8 +15,6 @@ String LCD_I2C::_empty = String("                    ");
 	inline size_t LCD_I2C::write(uint8_t value) 
 	{
 		send(value, Rs);
-		_curr_col++;		
-		_check_position();
 		return 1;
 	}
 #else
@@ -27,9 +23,6 @@ String LCD_I2C::_empty = String("                    ");
 	inline void LCD_I2C::write(uint8_t value) 
 	{
 		send(value, Rs);
-		_curr_col++;		
-		_check_position();
-		// setCursor(_pos_row, ++ _pos_col);
 	}
 #endif
 #include "Wire.h"
@@ -252,7 +245,7 @@ void LCD_I2C::switchBlink(bool state)
 //*******************************************************************************
 // Copies the passed in String to the internal screen buffer.
 //*******************************************************************************
-void LCD_I2C::setScreen(String screen)
+void LCD_I2C::setScreenBuffer(String screen)
 {
 	for (uint8_t r = 0; r <= _rows; r++)
 	{
@@ -274,24 +267,13 @@ void LCD_I2C::bufferToScreen()
 }
 
 //*******************************************************************************
-// Scrolls the screen up.
+// Copies one line to the screen.									
 //*******************************************************************************
-void LCD_I2C::scrollScreenUp(bool rotate_data)
+void LCD_I2C::lineToScreen(uint8_t line_to_write) 
 {
-	String saved = _screenbuffer[0];
-	for (uint8_t row = 0; row < _rows - 1; row++)
-	{
-		_screenbuffer[row] = _screenbuffer[row + 1];
-	}
-	if (rotate_data)
-	{
-		_screenbuffer[_rows - 1] = saved;
-	}
-	else
-	{
-		_screenbuffer[_rows - 1] = _empty.substring(0, _cols);
-	}
-	bufferToScreen();
+	setCursor(line_to_write, 0);
+	print(_screenbuffer[line_to_write]);
+	setCursor(line_to_write + 1, 0);
 }
 
 //*******************************************************************************
@@ -310,9 +292,30 @@ void LCD_I2C::addLine(String line)
 }
 
 //*******************************************************************************
+// Scrolls the screen up.
+//*******************************************************************************
+void LCD_I2C::scrollUp(bool rotate_data)
+{
+	String saved = _screenbuffer[0];
+	for (uint8_t row = 0; row < _rows - 1; row++)
+	{
+		_screenbuffer[row] = _screenbuffer[row + 1];
+	}
+	if (rotate_data)
+	{
+		_screenbuffer[_rows - 1] = saved;
+	}
+	else
+	{
+		_screenbuffer[_rows - 1] = _empty.substring(0, _cols);
+	}
+	bufferToScreen();
+}
+
+//*******************************************************************************
 // Scrolls the screen down.
 //*******************************************************************************
-void LCD_I2C::scrollScreenDown(bool rotate_data)
+void LCD_I2C::scrollDown(bool rotate_data)
 {
 	String saved = _screenbuffer[_rows - 1];
 	for (uint8_t row = _rows - 1; row > 0; row--)
@@ -333,7 +336,7 @@ void LCD_I2C::scrollScreenDown(bool rotate_data)
 //*******************************************************************************
 // Scrolls the screen left.
 //*******************************************************************************
-void LCD_I2C::scrollScreenLeft(bool rotate_data)
+void LCD_I2C::scrollLeft(bool rotate_data)
 {
 	for (uint8_t row = 0; row < _rows; row++)
 	{
@@ -354,14 +357,14 @@ void LCD_I2C::scrollScreenLeft(bool rotate_data)
 //*******************************************************************************
 // Scrolls the screen right.
 //*******************************************************************************
-void LCD_I2C::scrollScreenRight(bool rotate_data)
+void LCD_I2C::scrollRight(bool rotate_data)
 {
 	for (uint8_t row = 0; row < _rows; row++)
 	{
 		String temp = _screenbuffer[row];
 		if (rotate_data)
 		{
-			_screenbuffer[row] = temp.substring(_cols);
+			_screenbuffer[row] = temp.substring(_cols - 1);
 		}
 		else
 		{
@@ -408,7 +411,34 @@ inline void LCD_I2C::command(uint8_t value)
 }
 
 //*******************************************************************************
-// Low Level data dushing commands.
+// Corrects internal cursor position when write function is used.
+//*******************************************************************************
+bool LCD_I2C::_check_position(bool increment)
+{
+	bool reposition = false;
+	if (increment)
+	{
+		_curr_col++;
+	}
+	if (_curr_col >= _cols)
+	{
+		_curr_col = 0;
+		_curr_row++;
+		reposition = true;
+	}
+	if (_curr_row >= _rows)
+	{
+		_curr_row = 0;
+		reposition = true;
+	}
+	if (reposition)
+	{
+		setCursor(_curr_row, _curr_col);
+	}
+}
+	
+//*******************************************************************************
+// Low Level data pushing commands.
 //*******************************************************************************
 
 //*******************************************************************************
@@ -420,6 +450,10 @@ void LCD_I2C::send(uint8_t value, uint8_t mode)
 	uint8_t lo_nibble = (value << 4) & 0xf0;
 	write4bits((hi_nibble) | mode);
 	write4bits((lo_nibble) | mode); 
+	if (mode == Rs)
+	{
+		_check_position(true);
+	}
 }
 
 //*******************************************************************************
@@ -453,39 +487,6 @@ void LCD_I2C::pulseEnable(uint8_t _data)
 	delayMicroseconds(50);		// commands need > 37 microseconds to settle.
 } 
 
-//*******************************************************************************
-// Copies one line to the screen.									
-//*******************************************************************************
-void LCD_I2C::lineToScreen(uint8_t line_to_write) 
-{
-	setCursor(line_to_write, 0);
-	print(_screenbuffer[line_to_write]);
-	setCursor(line_to_write + 1, 0);
-}
-
-//*******************************************************************************
-// Increments internal cursor position when write function is used.
-//*******************************************************************************
-bool LCD_I2C::_check_position()
-{
-	bool reposition = false;
-	if (_curr_col >= _cols)
-	{
-		_curr_col = 0;
-		_curr_row++;
-		reposition = true;
-	}
-	if (_curr_row >= _rows)
-	{
-		_curr_row = 0;
-		reposition = true;
-	}
-	if (reposition)
-	{
-		setCursor(_curr_row, _curr_col);
-	}
-}
-	
 //*******************************************************************************
 // Unsupported API functions.							
 //*******************************************************************************

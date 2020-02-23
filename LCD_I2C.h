@@ -39,30 +39,28 @@ public:
 	void home();
 	
 	void setCursor(uint8_t row, uint8_t col);
-	uint8_t getRow();
-	uint8_t getCol();
-	
+
 	void switchBacklight(bool state);
 	void switchDisplay(bool state);
 	void switchCursor(bool state);
 	void switchBlink(bool state);
 
-	void setScreen(String screen);
+	void setScreenBuffer(String screen);
 	void lineToScreen(uint8_t line_to_write);
 	void addLine(String line);
 	void bufferToScreen();
 	
-	void scrollScreenUp(bool rotate_data);
-	void scrollScreenDown(bool rotate_data);
-	void scrollScreenLeft(bool rotate_data);
-	void scrollScreenRight(bool rotate_data);
+	void scrollUp(bool rotate_data);
+	void scrollDown(bool rotate_data);
+	void scrollLeft(bool rotate_data);
+	void scrollRight(bool rotate_data);
 	
 	void createChar(uint8_t, uint8_t[]);
 	void createChar(uint8_t location, const char *charmap);
 
 private:
 	static String _empty;
-	bool _check_position();
+	bool _check_position(bool increment);
 
 	void init_priv();
 	void send(uint8_t, uint8_t);

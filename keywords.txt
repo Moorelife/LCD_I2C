@@ -25,22 +25,18 @@ switchDisplay	KEYWORD2
 switchCursor	KEYWORD2
 switchBlink	KEYWORD2
 
-setScreen	KEYWORD2
+setScreenBuffer	KEYWORD2
+bufferToScreen	KEYWORD2
 lineToScreen	KEYWORD2
 addLine	KEYWORD2
-bufferToScreen	KEYWORD2
 
-scrollScreenUp	KEYWORD2
-scrollScreenDown	KEYWORD2
-scrollScreenLeft	KEYWORD2
-scrollScreenRight	KEYWORD2
+scrollUp	KEYWORD2
+scrollDown	KEYWORD2
+scrollLeft	KEYWORD2
+scrollRight	KEYWORD2
 
 createChar	KEYWORD2
 createChar	KEYWORD2
-
-load_custom_character	KEYWORD2
-
-printstr	KEYWORD2
 
 ###########################################
 # Constants (LITERAL1)
